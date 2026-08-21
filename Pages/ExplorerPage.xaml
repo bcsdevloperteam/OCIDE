@@ -1,0 +1,26 @@
+<Page x:Class="OCIDE.Pages.ExplorerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:editor="clr-namespace:OCIDE.Editor"
+      mc:Ignorable="d" 
+      d:DesignHeight="450" d:DesignWidth="800"
+      Title="ExplorerPage">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="{DynamicResource ControlFillColorDefaultBrush}">
+            <TextBlock Text="File Explorer" Margin="10" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+        </Border>
+
+        <Border Grid.Column="1" Background="#1E1E1E">
+            <editor:CustomTextEditor x:Name="MainEditor" Margin="10" />
+        </Border>
+    </Grid>
+</Page>

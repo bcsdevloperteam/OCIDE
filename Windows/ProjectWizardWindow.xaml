@@ -1,0 +1,76 @@
+<ui:FluentWindow x:Class="OCIDE.Windows.ProjectWizardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        mc:Ignorable="d"
+        Title="Create New Project" Height="550" Width="600"
+        WindowBackdropType="Mica"
+        WindowCornerPreference="Round"
+        WindowStartupLocation="CenterOwner"
+        ExtendsContentIntoTitleBar="True">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Title="Project Wizard" Grid.Row="0">
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon Symbol="FolderAdd24" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <StackPanel Grid.Row="1" Margin="30">
+            <TextBlock Text="Project Details" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,0,20"/>
+            
+            <TextBlock Text="Project Name" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <ui:TextBox x:Name="ProjectNameTextBox" PlaceholderText="e.g. MyAwesomeApp" Margin="0,0,0,20"/>
+
+            <TextBlock Text="Location" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <ui:TextBox x:Name="LocationTextBox" Grid.Column="0" PlaceholderText="C:\Projects" Margin="0,0,10,0"/>
+                <ui:Button Grid.Column="1" Content="Browse..." Click="BrowseButton_Click"/>
+            </Grid>
+
+            <TextBlock Text="Project Type" FontWeight="SemiBold" Margin="0,0,0,5" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <ComboBox x:Name="ProjectTypeComboBox" Margin="0,0,0,20" SelectedIndex="0">
+                <ComboBoxItem Content="Empty Project"/>
+                <ComboBoxItem Content=".NET Console App"/>
+                <ComboBoxItem Content=".NET WPF App"/>
+                <ComboBoxItem Content="Web Application"/>
+                <ComboBoxItem Content="React / Node.js"/>
+            </ComboBox>
+
+            <ui:Card Padding="15" Margin="0,10,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Initialize Version Control" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                        <TextBlock Text="Create a new local Git repository (VCS) for this project." Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <ui:ToggleSwitch x:Name="VcsToggleSwitch" Grid.Column="1" IsChecked="True" VerticalAlignment="Center"/>
+                </Grid>
+            </ui:Card>
+        </StackPanel>
+
+        <Border Grid.Row="2" Background="{DynamicResource ControlFillColorDefaultBrush}" Padding="20">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button Content="Cancel" Margin="0,0,10,0" Width="100" Click="CancelButton_Click"/>
+                <ui:Button Content="Create Project" Appearance="Primary" Width="150" Click="CreateButton_Click"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

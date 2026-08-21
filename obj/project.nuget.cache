@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "v2K3oR58bkA=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Indranil saha\\Desktop\\coding\\own codeeditor\\OCIDE.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Indranil saha\\.nuget\\packages\\communitytoolkit.mvvm\\8.4.2\\communitytoolkit.mvvm.8.4.2.nupkg.sha512",
+    "C:\\Users\\Indranil saha\\.nuget\\packages\\wpf-ui\\4.3.0\\wpf-ui.4.3.0.nupkg.sha512",
+    "C:\\Users\\Indranil saha\\.nuget\\packages\\wpf-ui.abstractions\\4.3.0\\wpf-ui.abstractions.4.3.0.nupkg.sha512"
+  ],
+  "logs": []
+}
