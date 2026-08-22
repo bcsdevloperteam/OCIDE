@@ -1,0 +1,11 @@
+# Visual Studio
+.vs/
+bin/
+obj/
+*.user
+*.suo
+
+# OCIDE specific
+CRASH_*.txt
+Extensions/
+Packages/
