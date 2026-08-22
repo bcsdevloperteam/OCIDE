@@ -1,0 +1,30 @@
+[
+  {
+    "Id": "lang.python",
+    "Name": "Python Extension Pack",
+    "Description": "IntelliSense, linting, and formatting for Python development.",
+    "Author": "OCIDE Team",
+    "Version": "1.0.0",
+    "Snippets": {
+      "def": [ "def function_name():\n    pass" ],
+      "if": [ "if condition:\n    pass" ],
+      "for": [ "for item in collection:\n    pass" ],
+      "class": [ "class ClassName:\n    def __init__(self):\n        pass" ],
+      "import": [ "import os", "import sys", "import math" ],
+      "print": [ "print(\"hello\")" ]
+    }
+  },
+  {
+    "Id": "lang.js",
+    "Name": "JavaScript (ES6) snippets",
+    "Description": "Snippets and auto-completion for JavaScript.",
+    "Author": "OCIDE Team",
+    "Version": "1.0.0",
+    "Snippets": {
+      "function": [ "function name() {\n\n}" ],
+      "const": [ "const name = value;" ],
+      "let": [ "let name = value;" ],
+      "console.log": [ "console.log();" ]
+    }
+  }
+]
