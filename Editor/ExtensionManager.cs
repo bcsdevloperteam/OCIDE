@@ -67,15 +67,37 @@ namespace OCIDE.Editor
 
         public static async Task<bool> InstallAsync(string id)
         {
-            // Simulate downloading
-            await Task.Delay(1000);
-            var catalog = await GetCatalogAsync();
-            var ext = catalog.FirstOrDefault(x => x.Id == id);
-            if (ext != null)
+            try
             {
-                string json = JsonSerializer.Serialize(ext, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(Path.Combine(ExtensionsDir, id + ".json"), json);
-                return true;
+                var catalog = await GetCatalogAsync();
+                var ext = catalog.FirstOrDefault(x => x.Id == id);
+                if (ext != null)
+                {
+                    // Save the JSON manifest
+                    string json = JsonSerializer.Serialize(ext, new JsonSerializerOptions { WriteIndented = true });
+                    File.WriteAllText(Path.Combine(ExtensionsDir, id + ".json"), json);
+
+                    // If it's an executable extension, download the DLL
+                    if (!string.IsNullOrEmpty(ext.Main))
+                    {
+                        using (var client = new System.Net.Http.HttpClient())
+                        {
+                            client.DefaultRequestHeaders.Add("User-Agent", "OCIDE-Extension-Manager");
+                            
+                            // Construct raw GitHub URL to the DLL inside the repository
+                            string dllUrl = $"https://raw.githubusercontent.com/bcsdevloperteam/ocide-extenshions/main/Packages/{id}/{ext.Main}";
+                            
+                            byte[] dllBytes = await client.GetByteArrayAsync(dllUrl);
+                            File.WriteAllBytes(Path.Combine(ExtensionsDir, ext.Main), dllBytes);
+                        }
+                    }
+
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to install extension {id}: {ex.Message}");
             }
             return false;
         }
