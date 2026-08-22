@@ -1,0 +1,46 @@
+{
+  "language": "markdown",
+  "extensions": [".md", ".markdown"],
+  "syntax_colors": [
+    {
+      "token_type": "heading",
+      "regex": "^\\#{1,6}\\s+.*",
+      "colors": { "dark": "#4EB4FF", "light": "#0451A5" }
+    },
+    {
+      "token_type": "bold_text",
+      "regex": "\\*\\*.*?\\*\\*|__.*?__",
+      "colors": { "dark": "#FFD700", "light": "#0000EE" }
+    },
+    {
+      "token_type": "italic_text",
+      "regex": "(?<!\\*)\\*(?!\\*).*?(?<!\\*)\\*(?!\\*)|(?<!_)_(?!_).*?(?<!_)_(?!_)",
+      "colors": { "dark": "#E06CFF", "light": "#800080" }
+    },
+    {
+      "token_type": "code_block",
+      "regex": "```[\\s\\S]*?```",
+      "colors": { "dark": "#FFB28A", "light": "#A31515" }
+    },
+    {
+      "token_type": "inline_code",
+      "regex": "`[^`]*`",
+      "colors": { "dark": "#FFB28A", "light": "#A31515" }
+    },
+    {
+      "token_type": "blockquote",
+      "regex": "^>\\s+.*",
+      "colors": { "dark": "#72CA58", "light": "#008000" }
+    },
+    {
+      "token_type": "list_item",
+      "regex": "^\\s*[-*+]\\s+|^\\s*\\d+\\.\\s+",
+      "colors": { "dark": "#4ED6BB", "light": "#098658" }
+    },
+    {
+      "token_type": "link",
+      "regex": "\\[.*?\\]\\(.*?\\)",
+      "colors": { "dark": "#9CDCFE", "light": "#008080" }
+    }
+  ]
+}

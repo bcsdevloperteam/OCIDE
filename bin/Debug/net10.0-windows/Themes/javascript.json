@@ -1,0 +1,37 @@
+{
+  "language": "javascript",
+  "extensions": [".js", ".json"],
+  "syntax_colors": [
+    {
+      "token_type": "comment",
+      "regex": "//[^\\r\\n]*|/\\*[\\s\\S]*?\\*/",
+      "colors": { "dark": "#72CA58", "light": "#008000" }
+    },
+    {
+      "token_type": "string",
+      "regex": "\"[^\"]*\"|'[^']*'|`[\\s\\S]*?`",
+      "colors": { "dark": "#FFB28A", "light": "#A31515" }
+    },
+    {
+      "token_type": "keyword",
+      "regex": "\\b(await|async|break|case|catch|class|const|continue|debugger|default|delete|do|else|export|extends|finally|for|function|if|import|in|instanceof|let|new|return|super|switch|this|throw|try|typeof|var|void|while|with|yield)\\b",
+      "colors": { "dark": "#4EB4FF", "light": "#0000FF" }
+    },
+    {
+      "token_type": "boolean_and_null",
+      "regex": "\\b(true|false|null|undefined)\\b",
+      "colors": { "dark": "#4EB4FF", "light": "#0000FF" }
+    },
+    {
+      "token_type": "function_name",
+      "regex": "\\b[a-zA-Z_$][0-9a-zA-Z_$]*(?=\\s*\\()",
+      "colors": { "dark": "#FFE082", "light": "#795E26" }
+    },
+    {
+      "token_type": "number",
+      "regex": "\\b\\d+(\\.\\d+)?\\b",
+      "colors": { "dark": "#B5E8B0", "light": "#098658" }
+    }
+  ]
+}
+

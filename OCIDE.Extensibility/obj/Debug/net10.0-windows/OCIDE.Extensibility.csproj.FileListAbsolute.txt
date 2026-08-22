@@ -1,0 +1,12 @@
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\bin\Debug\net10.0-windows\OCIDE.Extensibility.deps.json
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\bin\Debug\net10.0-windows\OCIDE.Extensibility.dll
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\bin\Debug\net10.0-windows\OCIDE.Extensibility.pdb
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\obj\Debug\net10.0-windows\OCIDE.Extensibility.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\obj\Debug\net10.0-windows\OCIDE.Extensibility.AssemblyInfoInputs.cache
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\obj\Debug\net10.0-windows\OCIDE.Extensibility.AssemblyInfo.cs
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\obj\Debug\net10.0-windows\OCIDE.Extensibility.csproj.CoreCompileInputs.cache
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\obj\Debug\net10.0-windows\OCIDE.Extensibility.sourcelink.json
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\obj\Debug\net10.0-windows\OCIDE.Extensibility.dll
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\obj\Debug\net10.0-windows\refint\OCIDE.Extensibility.dll
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\obj\Debug\net10.0-windows\OCIDE.Extensibility.pdb
+C:\Users\Indranil saha\Desktop\coding\own codeeditor\OCIDE.Extensibility\obj\Debug\net10.0-windows\ref\OCIDE.Extensibility.dll

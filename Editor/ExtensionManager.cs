@@ -14,7 +14,14 @@ namespace OCIDE.Editor
         public string Description { get; set; }
         public string Author { get; set; }
         public string Version { get; set; }
-        public Dictionary<string, string[]> Snippets { get; set; }
+        public string Main { get; set; } // Path to DLL
+        public List<string> ActivationEvents { get; set; } = new List<string>();
+        public ExtensionContributes Contributes { get; set; } = new ExtensionContributes();
+    }
+
+    public class ExtensionContributes
+    {
+        public Dictionary<string, string[]> Snippets { get; set; } = new Dictionary<string, string[]>();
     }
 
     public static class ExtensionManager
@@ -36,8 +43,7 @@ namespace OCIDE.Editor
                 using (var client = new System.Net.Http.HttpClient())
                 {
                     // This is the URL to the GitHub repository where the extensions catalog will be hosted.
-                    // Replace 'bcsdevloperteam/OCIDE' with the actual repository where you upload catalog.json.
-                    string url = "https://raw.githubusercontent.com/bcsdevloperteam/OCIDE/main/catalog.json";
+                    string url = "https://raw.githubusercontent.com/bcsdevloperteam/ocide-extenshions/main/catalog.json";
                     
                     // We add a dummy user-agent because some servers reject requests without one
                     client.DefaultRequestHeaders.Add("User-Agent", "OCIDE-Extension-Manager");

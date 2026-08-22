@@ -18,24 +18,77 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <ui:TitleBar x:Name="AppTitleBar" Title="OCIDE" Grid.Row="0" Icon="{ui:SymbolIcon Code24}" />
-        
-        <ui:NavigationView
-            x:Name="RootNavigation"
-            Grid.Row="1"
-            PaneDisplayMode="Left"
-            IsBackButtonVisible="Visible"
-            BackRequested="RootNavigation_BackRequested">
-            <ui:NavigationView.MenuItems>
-                <ui:NavigationViewItem x:Name="ProjectsMenuItem" Content="Projects" Icon="{ui:SymbolIcon FolderProhibited24}" TargetPageType="{x:Type pages:ProjectsPage}" />
-                <ui:NavigationViewItem x:Name="ExplorerMenuItem" Content="Explorer" Icon="{ui:SymbolIcon Document24}" TargetPageType="{x:Type pages:ExplorerPage}" Visibility="Collapsed"/>
-                <ui:NavigationViewItem x:Name="SearchMenuItem" Content="Search" Icon="{ui:SymbolIcon Search24}" Visibility="Collapsed"/>
-                <ui:NavigationViewItem x:Name="SourceControlMenuItem" Content="Source Control" Icon="{ui:SymbolIcon Branch24}" Visibility="Collapsed"/>
-                <ui:NavigationViewItem x:Name="AIExtensionsMenuItem" Content="AI Extensions" Icon="{ui:SymbolIcon Bot24}" Visibility="Collapsed"/>
-            </ui:NavigationView.MenuItems>
-            <ui:NavigationView.FooterMenuItems>
-                <ui:NavigationViewItem Content="Settings" Icon="{ui:SymbolIcon Settings24}" TargetPageType="{x:Type pages:SettingsPage}"/>
-            </ui:NavigationView.FooterMenuItems>
-        </ui:NavigationView>
+        <ui:TitleBar x:Name="AppTitleBar" Title="OCIDE" Grid.Row="0">
+            <ui:TitleBar.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="AppTitleText" Text="OCIDE" VerticalAlignment="Center" Margin="15,0,15,0" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <ui:Button x:Name="HomeTitlebarButton" Content="Home" Appearance="Transparent" Icon="{ui:SymbolIcon Home24}" 
+                               HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" 
+                               Click="HomeButton_Click" Visibility="Collapsed"/>
+                </StackPanel>
+            </ui:TitleBar.Header>
+        </ui:TitleBar>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ui:NavigationView
+                x:Name="RootNavigation"
+                Grid.Column="0"
+                PaneDisplayMode="Left"
+                IsBackButtonVisible="Visible"
+                BackRequested="RootNavigation_BackRequested">
+                <ui:NavigationView.MenuItems>
+                    <ui:NavigationViewItem x:Name="ProjectsMenuItem" Content="Projects" Icon="{ui:SymbolIcon FolderProhibited24}" TargetPageType="{x:Type pages:ProjectsPage}" />
+                    <ui:NavigationViewItem x:Name="ExplorerMenuItem" Content="Explorer" Icon="{ui:SymbolIcon Document24}" TargetPageType="{x:Type pages:ExplorerPage}" Visibility="Collapsed"/>
+                    <ui:NavigationViewItem x:Name="SearchMenuItem" Content="Search" Icon="{ui:SymbolIcon Search24}" TargetPageType="{x:Type pages:SearchPage}" Visibility="Collapsed"/>
+                    <ui:NavigationViewItem x:Name="ExtensionsMenuItem" Content="Extensions" Icon="{ui:SymbolIcon PuzzlePiece24}" TargetPageType="{x:Type pages:ExtensionsPage}" Visibility="Collapsed"/>
+                    <ui:NavigationViewItem x:Name="SourceControlMenuItem" Content="Source Control" Icon="{ui:SymbolIcon Branch24}" Visibility="Collapsed"/>
+                    <ui:NavigationViewItem x:Name="AIExtensionsMenuItem" Content="AI Extensions" Icon="{ui:SymbolIcon Bot24}" Visibility="Collapsed"/>
+                </ui:NavigationView.MenuItems>
+                <ui:NavigationView.FooterMenuItems>
+                    <ui:NavigationViewItem Content="Settings" Icon="{ui:SymbolIcon Settings24}" TargetPageType="{x:Type pages:SettingsPage}"/>
+                </ui:NavigationView.FooterMenuItems>
+            </ui:NavigationView>
+
+            <Border x:Name="EditorBorder" Grid.Column="1" Background="#1E1E1E" CornerRadius="8" Margin="10,0,0,0">
+                <TabControl x:Name="EditorTabs" Background="Transparent" BorderThickness="0" Margin="0" Visibility="Collapsed">
+                    <TabControl.Resources>
+                        <Style TargetType="TabItem">
+                            <Setter Property="Background" Value="#2D2D2D"/>
+                            <Setter Property="Foreground" Value="#CCCCCC"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Margin" Value="0,0,2,0"/>
+                            <Setter Property="Padding" Value="15,8"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="TabItem">
+                                        <Border Name="Border" Background="{TemplateBinding Background}"
+                                                BorderThickness="0" CornerRadius="8,8,0,0"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter x:Name="ContentSite"
+                                                              VerticalAlignment="Center"
+                                                              HorizontalAlignment="Center"
+                                                              ContentSource="Header" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Border" Property="Background" Value="#1E1E1E"/>
+                                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="False">
+                                                <Setter TargetName="Border" Property="Background" Value="#2D2D2D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </TabControl.Resources>
+                </TabControl>
+            </Border>
+        </Grid>
     </Grid>
 </ui:FluentWindow>

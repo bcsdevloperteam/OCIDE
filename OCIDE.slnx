@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="OCIDE.csproj" />
+  <Project Path="OCIDE.Extensibility/OCIDE.Extensibility.csproj" />
+</Solution>

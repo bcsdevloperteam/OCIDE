@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NET;NET10_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NET9_0_OR_GREATER;NET10_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
 C:\Users\Indranil saha\Desktop\coding\own codeeditor\App.xaml
-5-1967519365
+81977147806
 
-10424560781
-209-1765585280
-MainWindow.xaml;Pages\ExplorerPage.xaml;Pages\ProjectsPage.xaml;Pages\SettingsPage.xaml;Windows\ProjectWizardWindow.xaml;
+211060018958
+219-1281310419
+MainWindow.xaml;Pages\ExplorerPage.xaml;Pages\ExtensionsPage.xaml;Pages\ProjectsPage.xaml;Pages\SearchPage.xaml;Pages\SettingsPage.xaml;Windows\ProjectWizardWindow.xaml;Windows\PromptWindow.xaml;
 
 False
 

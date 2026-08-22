@@ -16,55 +16,73 @@ namespace OCIDE;
 /// <summary>
 /// Interaction logic for MainWindow.xaml
 /// </summary>
-public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
-{
-    private AppConfig _config;
-
-    public MainWindow()
+    public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
     {
-        InitializeComponent();
-        Wpf.Ui.Appearance.SystemThemeWatcher.Watch(this);
-
-        _config = SettingsManager.Load();
+        private AppConfig _config;
         
-        this.Width = _config.WindowWidth;
-        this.Height = _config.WindowHeight;
-        if (!double.IsNaN(_config.WindowTop)) this.Top = _config.WindowTop;
-        if (!double.IsNaN(_config.WindowLeft)) this.Left = _config.WindowLeft;
-        this.WindowState = _config.WindowState;
+        public static MainWindow Instance { get; private set; }
 
-
-        this.Loaded += MainWindow_Loaded;
-        this.Closing += MainWindow_Closing;
-    }
-
-    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
-    {
-        // Master Syncing: Restore opened folder and file
-        if (!string.IsNullOrEmpty(_config.LastOpenedFolder))
+        public MainWindow()
         {
-            AppTitleBar.Title = $"OCIDE - {System.IO.Path.GetFileName(_config.LastOpenedFolder)}";
-            ProjectsMenuItem.Visibility = Visibility.Collapsed;
+            InitializeComponent();
+            Instance = this;
             
-            // TODO: Load folder into Explorer view
-            ExplorerMenuItem.Visibility = Visibility.Visible;
-            SearchMenuItem.Visibility = Visibility.Visible;
-            SourceControlMenuItem.Visibility = Visibility.Visible;
-            AIExtensionsMenuItem.Visibility = Visibility.Visible;
+            // Removed custom titlebar icon per user request
+            
+            Wpf.Ui.Appearance.SystemThemeWatcher.Watch(this);
 
-            RootNavigation.Navigate(typeof(OCIDE.Pages.ExplorerPage));
+            // Initialize Extension Host
+            OCIDE.Extensibility.ExtensionHost.Instance.Context = new OCIDE.Extensibility.OcideContext();
+            OCIDE.Extensibility.ExtensionHost.Instance.DiscoverExtensions();
+            OCIDE.Extensibility.EventAggregator.Publish("onStartup");
+
+            _config = SettingsManager.Load();
+            
+            this.Width = _config.WindowWidth;
+            this.Height = _config.WindowHeight;
+            if (!double.IsNaN(_config.WindowTop)) this.Top = _config.WindowTop;
+            if (!double.IsNaN(_config.WindowLeft)) this.Left = _config.WindowLeft;
+            this.WindowState = _config.WindowState;
+
+            this.Loaded += MainWindow_Loaded;
+            this.Closing += MainWindow_Closing;
+            this.Closed += MainWindow_Closed;
         }
-        else
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            AppTitleBar.Title = "OCIDE";
-            RootNavigation.Navigate(typeof(OCIDE.Pages.ProjectsPage));
+            if (!string.IsNullOrEmpty(_config.LastOpenedFolder))
+            {
+                AppTitleBar.Title = $"OCIDE - {System.IO.Path.GetFileName(_config.LastOpenedFolder)}";
+                AppTitleText.Text = AppTitleBar.Title;
+                ProjectsMenuItem.Visibility = Visibility.Collapsed;
+                HomeTitlebarButton.Visibility = Visibility.Visible;
+                
+                ExplorerMenuItem.Visibility = Visibility.Visible;
+                SearchMenuItem.Visibility = Visibility.Visible;
+                ExtensionsMenuItem.Visibility = Visibility.Visible;
+                SourceControlMenuItem.Visibility = Visibility.Visible;
+                AIExtensionsMenuItem.Visibility = Visibility.Visible;
+                
+                EditorBorder.Visibility = Visibility.Visible;
+                EditorTabs.Visibility = Visibility.Visible;
+                RootNavigation.SetValue(Grid.ColumnSpanProperty, 1);
+
+                RootNavigation.Navigate(typeof(OCIDE.Pages.ExplorerPage));
+            }
+            else
+            {
+                AppTitleBar.Title = "OCIDE";
+                AppTitleText.Text = AppTitleBar.Title;
+                HomeTitlebarButton.Visibility = Visibility.Collapsed;
+                
+                EditorBorder.Visibility = Visibility.Collapsed;
+                EditorTabs.Visibility = Visibility.Collapsed;
+                RootNavigation.SetValue(Grid.ColumnSpanProperty, 2);
+                
+                RootNavigation.Navigate(typeof(OCIDE.Pages.ProjectsPage));
+            }
         }
-        
-        if (!string.IsNullOrEmpty(_config.LastOpenedFile))
-        {
-            // TODO: Load file into CustomTextEditor
-        }
-    }
     
     public void OpenProject(string folderPath)
     {
@@ -79,17 +97,33 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         SettingsManager.Save(_config);
 
         AppTitleBar.Title = $"OCIDE - {System.IO.Path.GetFileName(folderPath)}";
+        AppTitleText.Text = AppTitleBar.Title;
         ProjectsMenuItem.Visibility = Visibility.Collapsed;
+        HomeTitlebarButton.Visibility = Visibility.Visible;
 
         ExplorerMenuItem.Visibility = Visibility.Visible;
         SearchMenuItem.Visibility = Visibility.Visible;
         SourceControlMenuItem.Visibility = Visibility.Visible;
         AIExtensionsMenuItem.Visibility = Visibility.Visible;
 
+        EditorBorder.Visibility = Visibility.Visible;
+        EditorTabs.Visibility = Visibility.Visible;
+        RootNavigation.SetValue(Grid.ColumnSpanProperty, 1);
+
         RootNavigation.Navigate(typeof(OCIDE.Pages.ExplorerPage));
     }
 
+    private void HomeButton_Click(object sender, RoutedEventArgs e)
+    {
+        CloseProjectAndGoHome();
+    }
+
     private void RootNavigation_BackRequested(object sender, RoutedEventArgs e)
+    {
+        CloseProjectAndGoHome();
+    }
+
+    private void CloseProjectAndGoHome()
     {
         // Close project and go back to Project Manager
         _config.LastOpenedFolder = string.Empty;
@@ -97,11 +131,18 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         SettingsManager.Save(_config);
 
         AppTitleBar.Title = "OCIDE";
+        AppTitleText.Text = AppTitleBar.Title;
         ProjectsMenuItem.Visibility = Visibility.Visible;
+        HomeTitlebarButton.Visibility = Visibility.Collapsed;
+        
         ExplorerMenuItem.Visibility = Visibility.Collapsed;
         SearchMenuItem.Visibility = Visibility.Collapsed;
         SourceControlMenuItem.Visibility = Visibility.Collapsed;
         AIExtensionsMenuItem.Visibility = Visibility.Collapsed;
+        
+        EditorBorder.Visibility = Visibility.Collapsed;
+        EditorTabs.Visibility = Visibility.Collapsed;
+        RootNavigation.SetValue(Grid.ColumnSpanProperty, 2);
 
         RootNavigation.Navigate(typeof(OCIDE.Pages.ProjectsPage));
     }
@@ -126,5 +167,67 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
 
         // Master Syncing: SettingsManager saves state automatically on close
         SettingsManager.Save(_config);
+    }
+
+    private void MainWindow_Closed(object sender, EventArgs e)
+    {
+        OCIDE.Extensibility.ExtensionHost.Instance.DeactivateAll();
+        Application.Current.Shutdown();
+        Environment.Exit(0);
+    }
+
+    // --- IIDEHost Implementation for Extensions --- //
+    public void OpenEditorTab(string tabTitle, UserControl contentControl)
+    {
+        var tabItem = new System.Windows.Controls.TabItem
+        {
+            Header = tabTitle,
+            Content = contentControl
+        };
+        EditorTabs.Items.Add(tabItem);
+        EditorTabs.SelectedItem = tabItem;
+    }
+
+    public void AddSidebarPanel(string iconName, string title, UserControl panelControl)
+    {
+        var navItem = new Wpf.Ui.Controls.NavigationViewItem
+        {
+            Content = title,
+            Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Apps24 }
+        };
+        RootNavigation.MenuItems.Add(navItem);
+
+        // A simple way to wire it without RootFrame
+        navItem.Click += (s, e) => {
+            // We can just open it in a tab for now, since injecting into NavigationView's content frame dynamically is complex
+            OpenEditorTab(title, panelControl);
+        };
+    }
+
+    public void AddMenuItem(string topLevelMenu, string itemName, Action onClick)
+    {
+        System.Diagnostics.Debug.WriteLine($"Plugin requested menu item: {topLevelMenu} -> {itemName}");
+    }
+
+    public string GetActiveFileContent()
+    {
+        if (EditorTabs.SelectedItem is System.Windows.Controls.TabItem tab && tab.Content is OCIDE.Editor.CustomTextEditor editor)
+        {
+            return editor.Text;
+        }
+        return string.Empty;
+    }
+
+    public void InsertTextAtCursor(string text)
+    {
+        if (EditorTabs.SelectedItem is System.Windows.Controls.TabItem tab && tab.Content is OCIDE.Editor.CustomTextEditor editor)
+        {
+            editor.Document.Insert(editor.CaretOffset, text);
+        }
+    }
+
+    public void ShowNotification(string title, string message)
+    {
+        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

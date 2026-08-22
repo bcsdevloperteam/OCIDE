@@ -8,11 +8,21 @@
     ".NETCoreApp,Version=v10.0": {
       "OCIDE/1.0.0": {
         "dependencies": {
+          "AvalonEdit": "6.3.0.90",
           "CommunityToolkit.Mvvm": "8.4.2",
+          "OCIDE.Extensibility": "1.0.0",
           "WPF-UI": "4.3.0"
         },
         "runtime": {
           "OCIDE.dll": {}
+        }
+      },
+      "AvalonEdit/6.3.0.90": {
+        "runtime": {
+          "lib/net7.0-windows7.0/ICSharpCode.AvalonEdit.dll": {
+            "assemblyVersion": "6.3.0.90",
+            "fileVersion": "6.3.0.90"
+          }
         }
       },
       "CommunityToolkit.Mvvm/8.4.2": {
@@ -41,6 +51,14 @@
             "fileVersion": "4.3.0.0"
           }
         }
+      },
+      "OCIDE.Extensibility/1.0.0": {
+        "runtime": {
+          "OCIDE.Extensibility.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
       }
     }
   },
@@ -49,6 +67,13 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "AvalonEdit/6.3.0.90": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-WVTb5MxwGqKdeasd3nG5udlV4t6OpvkFanziwI133K0/QJ5FvZmfzRQgpAjGTJhQfIA8GP7AzKQ3sTY9JOFk8Q==",
+      "path": "avalonedit/6.3.0.90",
+      "hashPath": "avalonedit.6.3.0.90.nupkg.sha512"
     },
     "CommunityToolkit.Mvvm/8.4.2": {
       "type": "package",
@@ -70,6 +95,11 @@
       "sha512": "sha512-7Kj9DmCCo4SOCd1jAiw4+EcMFP2nR8rLLvitAYzVtzbWToTsodkbie24+8x9C4LDLxkopWEUGX62szqqNy7oeg==",
       "path": "wpf-ui.abstractions/4.3.0",
       "hashPath": "wpf-ui.abstractions.4.3.0.nupkg.sha512"
+    },
+    "OCIDE.Extensibility/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
     }
   }
 }
