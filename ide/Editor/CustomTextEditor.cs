@@ -15,6 +15,9 @@ namespace OCIDE.Editor
         private DispatcherTimer _autoSaveTimer;
         private bool _isInternalChange = false;
         private AutocompleteManager _autocompleteManager;
+        
+        public OmniSharp.Extensions.LanguageServer.Protocol.Client.ILanguageClient? LspClient { get; private set; }
+        public string LanguageId { get; private set; } = string.Empty;
 
         public CustomTextEditor()
         {
@@ -28,6 +31,11 @@ namespace OCIDE.Editor
             ShowLineNumbers = true;
             LineNumbersForeground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#AAAAAA"));
 
+            this.Options.ConvertTabsToSpaces = true;
+            this.Options.IndentationSize = 4;
+            this.Options.EnableRectangularSelection = true;
+            this.Options.HighlightCurrentLine = true;
+
             _autocompleteManager = new AutocompleteManager(this);
 
             _autoSaveTimer = new DispatcherTimer();
@@ -39,10 +47,411 @@ namespace OCIDE.Editor
             this.TextArea.TextEntered += TextArea_TextEntered;
         }
 
+        protected override void OnPreviewKeyDown(System.Windows.Input.KeyEventArgs e)
+        {
+            if ((e.Key == System.Windows.Input.Key.Tab || e.Key == System.Windows.Input.Key.Enter) && e.KeyboardDevice.Modifiers == System.Windows.Input.ModifierKeys.None)
+            {
+                if (this.SyntaxHighlighting != null && this.SyntaxHighlighting.Name.Contains("html", StringComparison.OrdinalIgnoreCase))
+                {
+                    var doc = this.Document;
+                    int offset = this.CaretOffset;
+                    var line = doc.GetLineByOffset(offset);
+                    string textBefore = doc.GetText(line.Offset, offset - line.Offset);
+                    
+                    var standardTags = new System.Collections.Generic.HashSet<string>();
+                    var selfClosing = new System.Collections.Generic.HashSet<string>();
+                    
+                    try 
+                    {
+                        string jsonPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Datasets", "emmet.json");
+                        if (System.IO.File.Exists(jsonPath))
+                        {
+                            string json = System.IO.File.ReadAllText(jsonPath);
+                            using (var docJson = System.Text.Json.JsonDocument.Parse(json))
+                            {
+                                var root = docJson.RootElement.GetProperty("html");
+                                var std = root.GetProperty("standardTags");
+                                foreach (var item in std.EnumerateArray())
+                                    standardTags.Add(item.GetString());
+                                    
+                                var self = root.GetProperty("selfClosingTags");
+                                foreach (var item in self.EnumerateArray())
+                                    selfClosing.Add(item.GetString());
+                            }
+                        }
+                    } 
+                    catch { }
+                    
+                    if (standardTags.Count == 0)
+                    {
+                        standardTags = new System.Collections.Generic.HashSet<string>(new[] { 
+                            "div", "span", "p", "a", "b", "i", "u", "strong", "em", "h1", "h2", "h3", "ul", "li", "table", "tr", "td",
+                            "form", "input", "button", "html", "head", "body", "title", "script", "style", "link", "meta"
+                        });
+                        selfClosing = new System.Collections.Generic.HashSet<string>(new[] { "img", "br", "hr", "input", "meta", "link" });
+                    }
+
+                    string lineText = doc.GetText(line.Offset, offset - line.Offset);
+                    
+                    // Custom syntax: tag.attr value -> <tag attr="value"></tag>
+                    var customMatch = System.Text.RegularExpressions.Regex.Match(lineText, @"([a-zA-Z0-9]+)\.([a-zA-Z0-9_-]+)\s+([a-zA-Z0-9_.-]+)$");
+                    if (customMatch.Success)
+                    {
+                        string cTagName = customMatch.Groups[1].Value.ToLower();
+                        string cAttrName = customMatch.Groups[2].Value;
+                        string cAttrValue = customMatch.Groups[3].Value;
+                        
+                        if (standardTags.Contains(cTagName))
+                        {
+                            bool isSelfClosing = selfClosing.Contains(cTagName);
+                            string html = $"<{cTagName} {cAttrName}=\"{cAttrValue}\"";
+                            if (isSelfClosing) html += ">";
+                            else html += $"></{cTagName}>";
+                            
+                            int replaceStart = line.Offset + customMatch.Index;
+                            doc.Replace(replaceStart, customMatch.Length, html);
+                            
+                            if (isSelfClosing)
+                                this.CaretOffset = replaceStart + html.Length;
+                            else
+                                this.CaretOffset = replaceStart + html.IndexOf('>') + 1;
+                            
+                            e.Handled = true;
+                            return;
+                        }
+                    }
+
+                    int wordStart = -1;
+                    for (int i = lineText.Length - 1; i >= 0; i--)
+                    {
+                        char c = lineText[i];
+                        if (char.IsWhiteSpace(c) || c == '<' || c == '>')
+                        {
+                            wordStart = i + 1;
+                            break;
+                        }
+                    }
+                    if (wordStart == -1) wordStart = 0;
+                    
+                    string word = lineText.Substring(wordStart);
+                    if (word.Length > 0 && (char.IsLetter(word[0]) || word[0] == '!'))
+                    {
+                        string tagName = "";
+                        string id = "";
+                        string classes = "";
+                        
+                        int dotIdx = word.IndexOf('.');
+                        int hashIdx = word.IndexOf('#');
+                        
+                        int tagEnd = word.Length;
+                        if (dotIdx != -1 && (hashIdx == -1 || dotIdx < hashIdx)) tagEnd = Math.Min(tagEnd, dotIdx);
+                        if (hashIdx != -1 && (dotIdx == -1 || hashIdx < dotIdx)) tagEnd = Math.Min(tagEnd, hashIdx);
+                        
+                        tagName = word.Substring(0, tagEnd);
+                        
+                        if (hashIdx != -1)
+                        {
+                            int end = dotIdx != -1 && dotIdx > hashIdx ? dotIdx : word.Length;
+                            id = word.Substring(hashIdx + 1, end - hashIdx - 1);
+                        }
+                        
+                        if (dotIdx != -1)
+                        {
+                            classes = word.Substring(dotIdx + 1);
+                            if (hashIdx > dotIdx) {
+                                classes = word.Substring(dotIdx + 1, hashIdx - dotIdx - 1);
+                            }
+                            classes = classes.Replace(".", " ");
+                        }
+
+                        // Check snippets from JSON
+                        try 
+                        {
+                            string jsonPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Datasets", "emmet.json");
+                            if (System.IO.File.Exists(jsonPath))
+                            {
+                                string json = System.IO.File.ReadAllText(jsonPath);
+                                using (var docJson = System.Text.Json.JsonDocument.Parse(json))
+                                {
+                                    var root = docJson.RootElement.GetProperty("html");
+                                    if (root.TryGetProperty("snippets", out var snippetsObj))
+                                    {
+                                        if (snippetsObj.TryGetProperty(tagName, out var snippetProp))
+                                        {
+                                            string html = snippetProp.GetString();
+                                            doc.Replace(line.Offset + wordStart, word.Length, html);
+                                            int bodyIndex = html.IndexOf("<body>");
+                                            if (bodyIndex != -1)
+                                            {
+                                                int innerOffset = html.IndexOf('\n', bodyIndex);
+                                                if (innerOffset != -1)
+                                                    this.CaretOffset = line.Offset + wordStart + innerOffset + 5;
+                                                else
+                                                    this.CaretOffset = line.Offset + wordStart + bodyIndex + 6;
+                                            }
+                                            else
+                                            {
+                                                this.CaretOffset = line.Offset + wordStart + html.Length;
+                                            }
+                                            e.Handled = true;
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        } 
+                        catch { }
+                        
+                        if (standardTags.Contains(tagName.ToLower()))
+                        {
+                            bool isSelfClosing = selfClosing.Contains(tagName.ToLower());
+                            
+                            string html = $"<{tagName}";
+                            if (!string.IsNullOrEmpty(id)) html += $" id=\"{id}\"";
+                            if (!string.IsNullOrEmpty(classes)) html += $" class=\"{classes}\"";
+                            
+                            if (isSelfClosing)
+                                html += ">";
+                            else
+                                html += "></" + tagName + ">";
+                                
+                            doc.Replace(line.Offset + wordStart, word.Length, html);
+                            
+                            if (isSelfClosing)
+                                this.CaretOffset = line.Offset + wordStart + html.Length;
+                            else
+                                this.CaretOffset = line.Offset + wordStart + html.IndexOf('>') + 1;
+                            
+                            e.Handled = true;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            if (e.Key == System.Windows.Input.Key.Tab && e.KeyboardDevice.Modifiers == System.Windows.Input.ModifierKeys.None)
+            {
+                if (this.SelectionLength == 0 && this.CaretOffset < this.Document.TextLength)
+                {
+                    char nextChar = this.Document.GetCharAt(this.CaretOffset);
+                    if (nextChar == '}' || nextChar == ']' || nextChar == ')' || nextChar == '"' || nextChar == '\'' || nextChar == '`')
+                    {
+                        bool canJump = false;
+                        if (this.CaretOffset + 1 == this.Document.TextLength) canJump = true;
+                        else
+                        {
+                            char afterNext = this.Document.GetCharAt(this.CaretOffset + 1);
+                            if (char.IsWhiteSpace(afterNext) || afterNext == '}' || afterNext == ']' || afterNext == ')' || afterNext == ';' || afterNext == ',')
+                                canJump = true;
+                        }
+
+                        if (canJump)
+                        {
+                            this.CaretOffset++;
+                            e.Handled = true;
+                            return;
+                        }
+                    }
+                }
+            }
+            
+            // Alt+Up / Alt+Down to move lines
+            if (e.KeyboardDevice.Modifiers == System.Windows.Input.ModifierKeys.Alt)
+            {
+                if (e.Key == System.Windows.Input.Key.Up)
+                {
+                    var line = this.Document.GetLineByOffset(this.CaretOffset);
+                    if (line.LineNumber > 1)
+                    {
+                        int col = this.CaretOffset - line.Offset;
+                        var prevLine = this.Document.GetLineByNumber(line.LineNumber - 1);
+                        string lineText = this.Document.GetText(line);
+                        string prevLineText = this.Document.GetText(prevLine);
+                        
+                        this.Document.Replace(prevLine.Offset, prevLine.Length, lineText);
+                        this.Document.Replace(line.Offset, line.Length, prevLineText);
+                        this.CaretOffset = prevLine.Offset + Math.Min(col, lineText.Length);
+                        e.Handled = true;
+                        return;
+                    }
+                }
+                else if (e.Key == System.Windows.Input.Key.Down)
+                {
+                    var line = this.Document.GetLineByOffset(this.CaretOffset);
+                    if (line.LineNumber < this.Document.LineCount)
+                    {
+                        int col = this.CaretOffset - line.Offset;
+                        var nextLine = this.Document.GetLineByNumber(line.LineNumber + 1);
+                        string lineText = this.Document.GetText(line);
+                        string nextLineText = this.Document.GetText(nextLine);
+                        
+                        this.Document.Replace(line.Offset, line.Length, nextLineText);
+                        this.Document.Replace(nextLine.Offset, nextLine.Length, lineText);
+                        this.CaretOffset = nextLine.Offset + Math.Min(col, lineText.Length);
+                        e.Handled = true;
+                        return;
+                    }
+                }
+            }
+            
+            // Ctrl+D to duplicate line
+            if (e.KeyboardDevice.Modifiers == System.Windows.Input.ModifierKeys.Control && e.Key == System.Windows.Input.Key.D)
+            {
+                var line = this.Document.GetLineByOffset(this.CaretOffset);
+                string lineText = this.Document.GetText(line);
+                this.Document.Insert(line.EndOffset, Environment.NewLine + lineText);
+                e.Handled = true;
+                return;
+            }
+
+            // Ctrl+Shift+K to delete line
+            if (e.KeyboardDevice.Modifiers == (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift) && e.Key == System.Windows.Input.Key.K)
+            {
+                var line = this.Document.GetLineByOffset(this.CaretOffset);
+                this.Document.Remove(line.Offset, line.TotalLength);
+                e.Handled = true;
+                return;
+            }
+
+            // Ctrl+/ to Toggle Line Comment
+            if (e.KeyboardDevice.Modifiers == System.Windows.Input.ModifierKeys.Control && e.Key == System.Windows.Input.Key.OemQuestion)
+            {
+                ToggleLineComment();
+                e.Handled = true;
+                return;
+            }
+
+            base.OnPreviewKeyDown(e);
+        }
+
+        private void ToggleLineComment()
+        {
+            if (this.SyntaxHighlighting == null) return;
+            
+            string lang = this.SyntaxHighlighting.Name.ToLower();
+            string commentStr = "//";
+            bool isBlockComment = false;
+            
+            if (lang.Contains("html") || lang.Contains("xml") || lang.Contains("markdown"))
+            {
+                commentStr = "<!--";
+                isBlockComment = true;
+            }
+            else if (lang.Contains("python"))
+            {
+                commentStr = "#";
+            }
+            else if (lang.Contains("css"))
+            {
+                commentStr = "/*";
+                isBlockComment = true;
+            }
+
+            int startLine = this.Document.GetLineByOffset(this.SelectionStart).LineNumber;
+            int endLine = this.Document.GetLineByOffset(this.SelectionStart + this.SelectionLength).LineNumber;
+            
+            // If the selection ends at the very beginning of the endLine, we don't want to comment out the endLine
+            if (this.SelectionLength > 0 && this.SelectionStart + this.SelectionLength == this.Document.GetLineByNumber(endLine).Offset)
+            {
+                endLine--;
+            }
+
+            using (this.Document.RunUpdate())
+            {
+                for (int i = startLine; i <= endLine; i++)
+                {
+                    var line = this.Document.GetLineByNumber(i);
+                    string text = this.Document.GetText(line);
+                    
+                    if (string.IsNullOrWhiteSpace(text)) continue;
+
+                    if (isBlockComment)
+                    {
+                        string closeStr = commentStr == "<!--" ? "-->" : "*/";
+                        string trimmed = text.Trim();
+                        if (trimmed.StartsWith(commentStr) && trimmed.EndsWith(closeStr))
+                        {
+                            // Uncomment
+                            int openIdx = text.IndexOf(commentStr);
+                            int closeIdx = text.LastIndexOf(closeStr);
+                            
+                            text = text.Remove(closeIdx, closeStr.Length);
+                            // Also remove space if exists
+                            if (text.Length > openIdx + commentStr.Length && text[openIdx + commentStr.Length] == ' ')
+                            {
+                                text = text.Remove(openIdx + commentStr.Length, 1);
+                            }
+                            text = text.Remove(openIdx, commentStr.Length);
+                            
+                            // Remove space before closing tag if exists
+                            if (text.EndsWith(" ") && closeIdx > 0)
+                            {
+                                text = text.Remove(text.Length - 1);
+                            }
+                            
+                            this.Document.Replace(line.Offset, line.Length, text);
+                        }
+                        else
+                        {
+                            // Comment
+                            int firstCharIdx = text.Length - text.TrimStart().Length;
+                            text = text.Insert(firstCharIdx, commentStr + " ") + " " + closeStr;
+                            this.Document.Replace(line.Offset, line.Length, text);
+                        }
+                    }
+                    else
+                    {
+                        if (text.TrimStart().StartsWith(commentStr))
+                        {
+                            // Uncomment
+                            int idx = text.IndexOf(commentStr);
+                            int removeLen = commentStr.Length;
+                            if (text.Length > idx + removeLen && text[idx + removeLen] == ' ') removeLen++;
+                            text = text.Remove(idx, removeLen);
+                            this.Document.Replace(line.Offset, line.Length, text);
+                        }
+                        else
+                        {
+                            // Comment
+                            int firstCharIdx = text.Length - text.TrimStart().Length;
+                            text = text.Insert(firstCharIdx, commentStr + " ");
+                            this.Document.Replace(line.Offset, line.Length, text);
+                        }
+                    }
+                }
+            }
+        }
+
         private void TextArea_TextEntering(object sender, System.Windows.Input.TextCompositionEventArgs e)
         {
             if (string.IsNullOrEmpty(e.Text)) return;
             char c = e.Text[0];
+
+            // Smart Selection Wrapping
+            if (this.SelectionLength > 0)
+            {
+                if (c == '"' || c == '\'' || c == '(' || c == '{' || c == '[' || c == '<' || c == '`' || c == '*' || c == '_')
+                {
+                    char closingChar = c switch {
+                        '(' => ')',
+                        '{' => '}',
+                        '[' => ']',
+                        '<' => '>',
+                        _ => c
+                    };
+                    
+                    string selectedText = this.SelectedText;
+                    int oldStart = this.SelectionStart;
+                    this.Document.Replace(this.SelectionStart, this.SelectionLength, c + selectedText + closingChar);
+                    
+                    // Keep the text selected inside the wrappers
+                    this.SelectionStart = oldStart + 1;
+                    this.SelectionLength = selectedText.Length;
+                    
+                    e.Handled = true;
+                    return;
+                }
+            }
 
             // If user types a closing character that is already immediately to the right of the caret, step over it instead of duplicating it
             if (c == '}' || c == ']' || c == ')' || c == '"' || c == '\'' || c == '*' || c == '_' || c == '`')
@@ -92,7 +501,7 @@ namespace OCIDE.Editor
                     }
                 }
             }
-            else if (c == '\n' || c == '\r')
+            else if (c == '\n') // IMPORTANT: Only check \n to avoid double-firing on \r\n
             {
                 // Auto-indentation logic
                 var doc = this.Document;
@@ -128,34 +537,78 @@ namespace OCIDE.Editor
                         }
                     }
 
+                    // Smart indent for brackets { } [ ] ( ) (Applies to all languages)
+                    bool bracketSmartIndent = false;
+                    if (!htmlSmartIndent)
+                    {
+                        string textBefore = doc.GetText(prevLine.Offset, prevLine.Length);
+                        string textAfter = doc.GetText(currentLine.Offset, currentLine.Length);
+
+                        string trimmedBefore = textBefore.TrimEnd();
+                        string trimmedAfter = textAfter.TrimStart();
+                        
+                        if ((trimmedBefore.EndsWith("{") && trimmedAfter.StartsWith("}")) ||
+                            (trimmedBefore.EndsWith("[") && trimmedAfter.StartsWith("]")) ||
+                            (trimmedBefore.EndsWith("(") && trimmedAfter.StartsWith(")")))
+                        {
+                            bracketSmartIndent = true;
+                            string extraIndent = indent + "    ";
+                            int caret = this.CaretOffset;
+                            doc.Insert(caret, extraIndent + Environment.NewLine + indent);
+                            this.CaretOffset = caret + extraIndent.Length; 
+                        }
+                    }
+
                     // Python specific smart indent based on dataset
-                    if (!htmlSmartIndent && this.SyntaxHighlighting != null && this.SyntaxHighlighting.Name == "PythonDark")
+                    if (!htmlSmartIndent && !bracketSmartIndent && this.SyntaxHighlighting != null && this.SyntaxHighlighting.Name == "PythonDark")
                     {
                         string trimmed = prevLineText.Trim();
-                        var blockKeywords = new[] { "def", "class", "if", "elif", "else", "for", "while", "try", "except", "finally", "with" };
+                        var blockKeywords = new System.Collections.Generic.List<string>();
+                        
+                        try 
+                        {
+                            string jsonPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Datasets", "editor-config.json");
+                            if (System.IO.File.Exists(jsonPath))
+                            {
+                                string json = System.IO.File.ReadAllText(jsonPath);
+                                using (var docJson = System.Text.Json.JsonDocument.Parse(json))
+                                {
+                                    var smartIndent = docJson.RootElement.GetProperty("smartIndent");
+                                    var pyKeys = smartIndent.GetProperty("pythonBlockKeywords");
+                                    foreach (var item in pyKeys.EnumerateArray())
+                                        blockKeywords.Add(item.GetString());
+                                }
+                            }
+                        } 
+                        catch { }
+                        
+                        if (blockKeywords.Count == 0)
+                        {
+                            blockKeywords.AddRange(new[] { "def", "class", "if", "elif", "else", "for", "while", "try", "except", "finally", "with" });
+                        }
                         
                         // If it ends with ':' and starts with a block keyword, indent!
                         if (trimmed.EndsWith(":"))
                         {
                             string firstWord = trimmed.Split(' ')[0].Split(':')[0];
-                            if (Array.IndexOf(blockKeywords, firstWord) != -1)
+                            if (blockKeywords.Contains(firstWord))
                             {
                                 indent += "    "; // Add 4 spaces
                             }
                         }
                     }
                     
-                    // CSS and JS specific smart indent based on dataset
-                    if (this.SyntaxHighlighting != null && (this.SyntaxHighlighting.Name == "CssDark" || this.SyntaxHighlighting.Name == "JavaScriptDark"))
+                    // General bracket indent for CSS/JS/C# etc if they just hit enter after { [ (
+                    if (!htmlSmartIndent && !bracketSmartIndent)
                     {
                         string trimmed = prevLineText.Trim();
-                        if (trimmed.EndsWith("{"))
+                        if (trimmed.EndsWith("{") || trimmed.EndsWith("[") || trimmed.EndsWith("("))
                         {
                             indent += "    ";
                         }
                     }
 
-                    if (!htmlSmartIndent && !string.IsNullOrEmpty(indent))
+                    if (!htmlSmartIndent && !bracketSmartIndent && !string.IsNullOrEmpty(indent))
                     {
                         int caret = this.CaretOffset;
                         doc.Insert(caret, indent);
@@ -176,8 +629,8 @@ namespace OCIDE.Editor
                 }
             }
             
-            // Shared CSS/JS dedent logic for '}'
-            if (c == '}' && this.SyntaxHighlighting != null && (this.SyntaxHighlighting.Name == "CssDark" || this.SyntaxHighlighting.Name == "JavaScriptDark"))
+            // Dedent logic for '}'
+            if (c == '}')
             {
                 // Dedent current line if it's empty spaces
                 var doc = this.Document;
@@ -211,21 +664,26 @@ namespace OCIDE.Editor
                         if (!tagSection.Contains("\n") && !tagSection.Contains("\r") && 
                             !tagName.StartsWith("/") && !string.IsNullOrWhiteSpace(tagName) && !tagName.EndsWith("/"))
                         {
-                            string t = tagName.ToLower();
-                            
-                            // User's explicit dataset rules
-                            var closeAfterFalse = new[] { "img", "br", "hr", "input", "meta", "link", "base", "col", "embed", "source", "track", "wbr", "area", "param" };
-                            var closeAfterTrue = new[] { "html", "head", "title", "body", "header", "footer", "nav", "main", "article", "section", "aside", "details", "summary", "dialog", "div", "span", "p", "a", "b", "i", "u", "s", "strong", "em", "mark", "small", "sub", "sup", "pre", "code", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "dl", "dt", "dd", "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption", "form", "label", "select", "option", "optgroup", "textarea", "button", "fieldset", "legend", "datalist", "output", "progress", "meter", "script", "noscript", "style", "canvas", "svg", "audio", "video", "iframe", "object", "picture", "map", "figure", "figcaption" };
-
-                            // If it's explicitly marked as false, don't close it
-                            if (Array.IndexOf(closeAfterFalse, t) != -1)
+                            if (tagName.StartsWith("!") || tagName.StartsWith("?"))
                             {
-                                // Do nothing
+                                // Do not auto-close comments (<!--), doctypes (<!DOCTYPE), or XML declarations (<?)
                             }
-                            // If it's explicitly marked as true, OR it's an unknown custom tag (like <my-tag>), auto-close it
-                            else 
+                            else
                             {
-                                closing = $"</{tagName}>";
+                                string t = tagName.ToLower();
+                                
+                                // User's explicit dataset rules
+                                var closeAfterFalse = new[] { "img", "br", "hr", "input", "meta", "link", "base", "col", "embed", "source", "track", "wbr", "area", "param" };
+                                
+                                // If it's explicitly marked as false, don't close it
+                                if (Array.IndexOf(closeAfterFalse, t) != -1)
+                                {
+                                    // Do nothing
+                                }
+                                else 
+                                {
+                                    closing = $"</{tagName}>";
+                                }
                             }
                         }
                     }
@@ -246,6 +704,11 @@ namespace OCIDE.Editor
                     this.CaretOffset = currentOffset; // Put caret back between the brackets/quotes
                 }
             }
+        }
+
+        public void UpdateFilePath(string newPath)
+        {
+            _currentFilePath = newPath;
         }
 
         public void LoadFile(string filePath)
@@ -282,9 +745,17 @@ namespace OCIDE.Editor
                 // Fire extension lifecycle events
                 if (this.SyntaxHighlighting != null)
                 {
-                    OCIDE.Extensibility.EventAggregator.Publish("onLanguage", this.SyntaxHighlighting.Name.ToLower());
+                    LanguageId = this.SyntaxHighlighting.Name.ToLower();
+                    OCIDE.Extensibility.EventAggregator.Publish("onLanguage", LanguageId);
+                }
+                else
+                {
+                    LanguageId = ext.TrimStart('.');
                 }
                 OCIDE.Extensibility.EventAggregator.Publish("onFileOpen", ext);
+
+                // Start LSP asynchronously
+                InitializeLspAsync(LanguageId, filePath, this.Text);
             }
             catch (Exception ex)
             {
@@ -293,6 +764,41 @@ namespace OCIDE.Editor
             finally
             {
                 _isInternalChange = false;
+            }
+        }
+
+        private async void InitializeLspAsync(string languageId, string filePath, string content)
+        {
+            if (string.IsNullOrEmpty(languageId)) return;
+            
+            string workspacePath = Path.GetDirectoryName(filePath) ?? string.Empty;
+            var config = OCIDE.Services.SettingsManager.Load();
+            if (!string.IsNullOrEmpty(config.LastOpenedFolder))
+            {
+                workspacePath = config.LastOpenedFolder;
+            }
+
+            try
+            {
+                LspClient = await OCIDE.Services.LspManager.Instance.GetOrStartClientAsync(languageId, workspacePath);
+                
+                if (LspClient != null)
+                {
+                    LspClient.SendNotification("textDocument/didOpen", new OmniSharp.Extensions.LanguageServer.Protocol.Models.DidOpenTextDocumentParams
+                    {
+                        TextDocument = new OmniSharp.Extensions.LanguageServer.Protocol.Models.TextDocumentItem
+                        {
+                            Uri = OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri.FromFileSystemPath(filePath),
+                            LanguageId = languageId,
+                            Version = 1,
+                            Text = content
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LSP DidOpen Error: {ex.Message}");
             }
         }
 
@@ -344,12 +850,41 @@ namespace OCIDE.Editor
             return _darkMarkdown;
         }
 
+        private int _documentVersion = 1;
+
         private void CustomTextEditor_TextChanged(object? sender, EventArgs e)
         {
             if (_isInternalChange || string.IsNullOrEmpty(_currentFilePath)) return;
 
             _autoSaveTimer.Stop();
             _autoSaveTimer.Start();
+
+            if (LspClient != null)
+            {
+                _documentVersion++;
+                try
+                {
+                    LspClient.SendNotification("textDocument/didChange", new OmniSharp.Extensions.LanguageServer.Protocol.Models.DidChangeTextDocumentParams
+                    {
+                        TextDocument = new OmniSharp.Extensions.LanguageServer.Protocol.Models.OptionalVersionedTextDocumentIdentifier
+                        {
+                            Uri = OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri.FromFileSystemPath(_currentFilePath),
+                            Version = _documentVersion
+                        },
+                        ContentChanges = new[]
+                        {
+                            new OmniSharp.Extensions.LanguageServer.Protocol.Models.TextDocumentContentChangeEvent
+                            {
+                                Text = this.Text
+                            }
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"LSP DidChange Error: {ex.Message}");
+                }
+            }
         }
 
         private void AutoSaveTimer_Tick(object? sender, EventArgs e)

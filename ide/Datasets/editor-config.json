@@ -1,0 +1,7 @@
+{
+  "smartIndent": {
+    "pythonBlockKeywords": [
+      "def", "class", "if", "elif", "else", "for", "while", "try", "except", "finally", "with"
+    ]
+  }
+}

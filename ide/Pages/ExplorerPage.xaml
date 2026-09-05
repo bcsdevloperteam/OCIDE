@@ -15,6 +15,9 @@
             <Separator/>
             <MenuItem Header="Rename" Click="Rename_Click"/>
             <MenuItem Header="Delete" Click="Delete_Click"/>
+            <Separator/>
+            <MenuItem Header="Copy Path" Click="CopyPath_Click"/>
+            <MenuItem Header="Reveal in File Explorer" Click="RevealInExplorer_Click"/>
         </ContextMenu>
     </Page.Resources>
 
@@ -44,10 +47,16 @@
             
             <TreeView x:Name="FileTreeView" Background="Transparent" BorderThickness="0" 
                       Grid.Row="1" Foreground="#CCCCCC"
+                      AllowDrop="True" Drop="FileTreeView_Drop"
                       SelectedItemChanged="FileTreeView_SelectedItemChanged">
                 <TreeView.ItemContainerStyle>
                     <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                        <EventSetter Event="Selected" Handler="TreeViewItem_Selected"/>
+                        <EventSetter Event="Unselected" Handler="TreeViewItem_Unselected"/>
                         <EventSetter Event="PreviewMouseRightButtonDown" Handler="TreeViewItem_PreviewMouseRightButtonDown"/>
+                        <EventSetter Event="PreviewMouseLeftButtonDown" Handler="TreeViewItem_PreviewMouseLeftButtonDown"/>
+                        <EventSetter Event="MouseMove" Handler="TreeViewItem_MouseMove"/>
+                        <EventSetter Event="DragEnter" Handler="TreeViewItem_DragEnter"/>
                         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                         <Setter Property="Padding" Value="4"/>
                         <Setter Property="ContextMenu" Value="{StaticResource FileContextMenu}"/>

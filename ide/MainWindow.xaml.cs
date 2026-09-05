@@ -47,6 +47,108 @@ namespace OCIDE;
             this.Loaded += MainWindow_Loaded;
             this.Closing += MainWindow_Closing;
             this.Closed += MainWindow_Closed;
+            
+            EditorTabs.SelectionChanged += EditorTabs_SelectionChanged;
+            
+            SetupDynamicLogo();
+        }
+
+        private void EditorTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.Source == EditorTabs && EditorTabs.SelectedItem is TabItem tab && tab.Content is OCIDE.Editor.CustomTextEditor editor)
+            {
+                UpdateStatusBar(editor);
+            }
+            else if (EditorTabs.Items.Count == 0 || EditorTabs.SelectedItem == null)
+            {
+                StatusLanguageText.Text = "Plain Text";
+                StatusLnColText.Text = "Ln 1, Col 1";
+            }
+        }
+
+        public void UpdateStatusBar(OCIDE.Editor.CustomTextEditor editor)
+        {
+            if (editor == null) return;
+            
+            string lang = string.IsNullOrEmpty(editor.LanguageId) ? "Plain Text" : char.ToUpper(editor.LanguageId[0]) + editor.LanguageId.Substring(1);
+            if (lang.ToLower() == "csharp") lang = "C#";
+            StatusLanguageText.Text = lang;
+            
+            int line = editor.TextArea.Caret.Line;
+            int col = editor.TextArea.Caret.Column;
+            StatusLnColText.Text = $"Ln {line}, Col {col}";
+            
+            editor.TextArea.Caret.PositionChanged -= Caret_PositionChanged;
+            editor.TextArea.Caret.PositionChanged += Caret_PositionChanged;
+        }
+
+        private void Caret_PositionChanged(object? sender, EventArgs e)
+        {
+            if (EditorTabs.SelectedItem is TabItem tab && tab.Content is OCIDE.Editor.CustomTextEditor editor)
+            {
+                int line = editor.TextArea.Caret.Line;
+                int col = editor.TextArea.Caret.Column;
+                StatusLnColText.Text = $"Ln {line}, Col {col}";
+            }
+        }
+
+        private System.Windows.Threading.DispatcherTimer _logoTimer;
+        private bool _isFirstLogo = true;
+
+        private void SetupDynamicLogo()
+        {
+            UpdateLogo();
+
+            _logoTimer = new System.Windows.Threading.DispatcherTimer();
+            _logoTimer.Interval = TimeSpan.FromMinutes(30);
+            _logoTimer.Tick += (s, e) => UpdateLogo();
+            _logoTimer.Start();
+        }
+
+        private void UpdateLogo()
+        {
+            try
+            {
+                string logoFolder = GetLogoFolder();
+                if (string.IsNullOrEmpty(logoFolder)) return;
+
+                string logoPath = System.IO.Path.Combine(logoFolder, _isFirstLogo ? "1.png" : "2.png");
+                if (System.IO.File.Exists(logoPath))
+                {
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.UriSource = new Uri(logoPath, UriKind.Absolute);
+                    bitmap.EndInit();
+                    
+                    this.Icon = bitmap;
+                    
+                    if (AppTitleBar.Icon != null || true) // Wpf.Ui TitleBar also has an Icon property sometimes, but let's check what type it is. In Wpf.Ui v2 it's an IconElement
+                    {
+                        var imageIcon = new Wpf.Ui.Controls.ImageIcon { Source = bitmap };
+                        AppTitleBar.Icon = imageIcon;
+                    }
+                }
+                
+                _isFirstLogo = !_isFirstLogo;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update logo: {ex.Message}");
+            }
+        }
+
+        private string GetLogoFolder()
+        {
+            string current = AppDomain.CurrentDomain.BaseDirectory;
+            while (!string.IsNullOrEmpty(current))
+            {
+                string potential = System.IO.Path.Combine(current, "logo.app");
+                if (System.IO.Directory.Exists(potential))
+                    return potential;
+                current = System.IO.Path.GetDirectoryName(current);
+            }
+            return string.Empty;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -169,14 +271,13 @@ namespace OCIDE;
         SettingsManager.Save(_config);
     }
 
-    private void MainWindow_Closed(object sender, EventArgs e)
+    private void MainWindow_Closed(object? sender, EventArgs e)
     {
         OCIDE.Extensibility.ExtensionHost.Instance.DeactivateAll();
         Application.Current.Shutdown();
         Environment.Exit(0);
     }
 
-    // --- IIDEHost Implementation for Extensions --- //
     public void OpenEditorTab(string tabTitle, UserControl contentControl)
     {
         var headerPanel = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
@@ -195,9 +296,48 @@ namespace OCIDE;
         };
         headerPanel.Children.Add(closeBtn);
 
+        AttachTabContextMenu(tabItem);
+
         EditorTabs.Items.Add(tabItem);
         EditorTabs.SelectedItem = tabItem;
         EditorTabs.Visibility = Visibility.Visible;
+    }
+
+    public void AttachTabContextMenu(System.Windows.Controls.TabItem tabItem, string filePath = "")
+    {
+        var menu = new ContextMenu();
+        
+        var closeItem = new MenuItem { Header = "Close" };
+        closeItem.Click += (s, e) => { 
+            EditorTabs.Items.Remove(tabItem); 
+            if (EditorTabs.Items.Count == 0) EditorTabs.Visibility = Visibility.Collapsed; 
+        };
+        menu.Items.Add(closeItem);
+
+        var closeOthersItem = new MenuItem { Header = "Close Others" };
+        closeOthersItem.Click += (s, e) => {
+            var toRemove = new System.Collections.Generic.List<TabItem>();
+            foreach(TabItem t in EditorTabs.Items) { if (t != tabItem) toRemove.Add(t); }
+            foreach(var t in toRemove) EditorTabs.Items.Remove(t);
+        };
+        menu.Items.Add(closeOthersItem);
+
+        var closeAllItem = new MenuItem { Header = "Close All" };
+        closeAllItem.Click += (s, e) => {
+            EditorTabs.Items.Clear();
+            EditorTabs.Visibility = Visibility.Collapsed;
+        };
+        menu.Items.Add(closeAllItem);
+
+        if (!string.IsNullOrEmpty(filePath))
+        {
+            menu.Items.Add(new Separator());
+            var copyPathItem = new MenuItem { Header = "Copy Full Path" };
+            copyPathItem.Click += (s, e) => System.Windows.Clipboard.SetText(filePath);
+            menu.Items.Add(copyPathItem);
+        }
+
+        tabItem.ContextMenu = menu;
     }
 
     public void AddSidebarPanel(string iconName, string title, UserControl panelControl)
