@@ -42,6 +42,9 @@ namespace OCIDE.Editor
             _autoSaveTimer.Interval = TimeSpan.FromSeconds(1);
             _autoSaveTimer.Tick += AutoSaveTimer_Tick;
 
+            // Add Color Swatch Generator for inline CSS color previews
+            this.TextArea.TextView.ElementGenerators.Add(new ColorSwatchGenerator());
+
             this.TextChanged += CustomTextEditor_TextChanged;
             this.TextArea.TextEntering += TextArea_TextEntering;
             this.TextArea.TextEntered += TextArea_TextEntered;
